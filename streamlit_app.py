@@ -9,7 +9,7 @@ import os
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
-scaler_file = 'scaler (1).pkl'
+scaler_file = 'scaler.pkl'
 
 # List files in the current directory for debugging
 st.write("Files in the current directory:")
@@ -90,9 +90,9 @@ if uploaded_file is not None:
         # Ensure columns match the training data
         train_columns = ['value_eur', 'wage_eur', 'potential', 'age', 'defending', 'defending_standing_tackle',
                          'mentality_interceptions', 'defending_sliding_tackle', 'international_reputation',
-                         'movement_reactions', 'defending_marking_awareness', 'attacking_finishing', 'rb_75',
+                         'movement_reactions', 'defending_marking_awareness', 'attacking_finishing',
                          'league_id', 'skill_ball_control', 'skill_long_passing', 'attacking_volleys',
-                         'club_team_id', 'gk_76', 'attacking_crossing']
+                         'club_team_id', 'attacking_crossing']
         
         results = test_model_in_batches(best_model, new_data, new_data['overall'], train_columns, scaler=scaler)
         
