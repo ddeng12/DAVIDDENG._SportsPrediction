@@ -4,10 +4,8 @@ import pickle
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 
-# Title of the Streamlit app
 st.title("FIFA Model Deployment")
 
-# Load pre-trained model and scaler
 model_file = 'best_model.pkl'
 scaler_file = 'scaler.pkl'
 
@@ -25,7 +23,6 @@ except FileNotFoundError:
     st.error(f"Scaler file '{scaler_file}' not found. Please ensure the file is in the same directory as this script.")
     st.stop()
 
-# Function to preprocess the data
 def preprocess_data(data, train_columns):
     for col in train_columns:
         if col not in data.columns:
@@ -34,7 +31,6 @@ def preprocess_data(data, train_columns):
     data = data.fillna(0)
     return data
 
-# Function to test the model in batches
 def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch_size=1000):
     num_batches = len(X_new) // batch_size + 1
     all_predictions = []
@@ -61,19 +57,15 @@ def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch
         'r2_score': r2
     }
 
-# File uploader for the new dataset
 uploaded_file = st.file_uploader("Choose a CSV file for testing", type="csv")
 if uploaded_file is not None:
     new_data = pd.read_csv(uploaded_file)
     
-    # Separate features and target
     y_new = new_data['overall']
     X_new = new_data.drop('overall', axis=1)
     
-    # Assuming `train_columns` is available (list of columns used during training)
     train_columns = X_new.columns.tolist()
 
-    # Test the model with new data
     results = test_model_in_batches(best_model, X_new, y_new, train_columns, scaler=scaler)
     
     st.write(f"Mean Squared Error on new data: {results['mean_squared_error']:.2f}")
