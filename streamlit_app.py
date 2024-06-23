@@ -3,24 +3,40 @@ import pandas as pd
 import pickle
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.exceptions import NotFittedError
 
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
 scaler_file = 'scaler.pkl'
 
+# Load the model
 try:
     with open(model_file, 'rb') as f:
         best_model = pickle.load(f)
 except FileNotFoundError:
     st.error(f"Model file '{model_file}' not found. Please ensure the file is in the same directory as this script.")
     st.stop()
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    st.stop()
 
+# Load the scaler
 try:
     with open(scaler_file, 'rb') as f:
         scaler = pickle.load(f)
 except FileNotFoundError:
     st.error(f"Scaler file '{scaler_file}' not found. Please ensure the file is in the same directory as this script.")
+    st.stop()
+except Exception as e:
+    st.error(f"Error loading scaler: {e}")
+    st.stop()
+
+# Check if scaler is fitted
+try:
+    _ = scaler.mean_
+except AttributeError:
+    st.error("The scaler is not fitted yet. Please fit the scaler before using it.")
     st.stop()
 
 def preprocess_data(data, train_columns):
@@ -44,7 +60,11 @@ def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch
         X_batch = preprocess_data(X_batch, train_columns)
 
         if scaler:
-            X_batch = pd.DataFrame(scaler.transform(X_batch), columns=X_batch.columns)
+            try:
+                X_batch = pd.DataFrame(scaler.transform(X_batch), columns=X_batch.columns)
+            except NotFittedError:
+                st.error("The scaler is not fitted yet. Please fit the scaler before using it.")
+                st.stop()
 
         y_pred_batch = model.predict(X_batch)
         all_predictions.extend(y_pred_batch)
@@ -59,19 +79,21 @@ def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch
 
 uploaded_file = st.file_uploader("Choose a CSV file for testing", type="csv")
 if uploaded_file is not None:
-    new_data = pd.read_csv(uploaded_file)
-    
-    y_new = new_data['overall']
-    X_new = new_data.drop('overall', axis=1)
-    
-    train_columns = X_new.columns.tolist()
+    try:
+        new_data = pd.read_csv(uploaded_file)
+        
+        y_new = new_data['overall']
+        X_new = new_data.drop('overall', axis=1)
+        
+        train_columns = X_new.columns.tolist()
 
-    results = test_model_in_batches(best_model, X_new, y_new, train_columns, scaler=scaler)
-    
-    st.write(f"Mean Squared Error on new data: {results['mean_squared_error']:.2f}")
-    st.write(f"R2 Score on new data: {results['r2_score']:.2f}")
+        results = test_model_in_batches(best_model, X_new, y_new, train_columns, scaler=scaler)
+        
+        st.write(f"Mean Squared Error on new data: {results['mean_squared_error']:.2f}")
+        st.write(f"R2 Score on new data: {results['r2_score']:.2f}")
 
-    st.success("Model evaluation on new data is complete!")
-
+        st.success("Model evaluation on new data is complete!")
+    except Exception as e:
+        st.error(f"Error processing the uploaded file: {e}")
 else:
     st.info("Please upload a CSV file to test the model.")
