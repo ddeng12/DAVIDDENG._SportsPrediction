@@ -8,7 +8,7 @@ from sklearn.exceptions import NotFittedError
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
-scaler_file = 'scaler.pkl'
+scaler_file = 'scaler(1).pkl'
 
 # Load the model
 try:
