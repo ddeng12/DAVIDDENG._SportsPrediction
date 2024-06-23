@@ -1,119 +1,85 @@
 import streamlit as st
 import pandas as pd
+import pickle
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score
 
+# Title of the Streamlit app
+st.title("FIFA Model Deployment")
 
-st.title("📊 Data evaluation app")
+# Load pre-trained model and scaler
+model_file = 'best_model.pkl'
+scaler_file = 'scaler.pkl'
 
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
-)
+try:
+    with open(model_file, 'rb') as f:
+        best_model = pickle.load(f)
+except FileNotFoundError:
+    st.error(f"Model file '{model_file}' not found. Please ensure the file is in the same directory as this script.")
+    st.stop()
 
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
+try:
+    with open(scaler_file, 'rb') as f:
+        scaler = pickle.load(f)
+except FileNotFoundError:
+    st.error(f"Scaler file '{scaler_file}' not found. Please ensure the file is in the same directory as this script.")
+    st.stop()
 
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
-}
+# Function to preprocess the data
+def preprocess_data(data, train_columns):
+    for col in train_columns:
+        if col not in data.columns:
+            data[col] = 0
+    data = data[train_columns]
+    data = data.fillna(0)
+    return data
 
-df = pd.DataFrame(data)
+# Function to test the model in batches
+def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch_size=1000):
+    num_batches = len(X_new) // batch_size + 1
+    all_predictions = []
 
-st.write(df)
+    for i in range(num_batches):
+        start = i * batch_size
+        end = (i + 1) * batch_size
+        X_batch = X_new[start:end]
+        y_batch = y_new[start:end]
 
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
+        X_batch = preprocess_data(X_batch, train_columns)
 
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
+        if scaler:
+            X_batch = pd.DataFrame(scaler.transform(X_batch), columns=X_batch.columns)
 
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
+        y_pred_batch = model.predict(X_batch)
+        all_predictions.extend(y_pred_batch)
 
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
+    mse = mean_squared_error(y_new, all_predictions)
+    r2 = r2_score(y_new, all_predictions)
 
-st.divider()
+    return {
+        'mean_squared_error': mse,
+        'r2_score': r2
+    }
 
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
+# File uploader for the new dataset
+uploaded_file = st.file_uploader("Choose a CSV file for testing", type="csv")
+if uploaded_file is not None:
+    new_data = pd.read_csv(uploaded_file)
+    
+    # Separate features and target
+    y_new = new_data['overall']
+    X_new = new_data.drop('overall', axis=1)
+    
+    # Assuming `train_columns` is available (list of columns used during training)
+    train_columns = X_new.columns.tolist()
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
+    # Test the model with new data
+    results = test_model_in_batches(best_model, X_new, y_new, train_columns, scaler=scaler)
+    
+    st.write(f"Mean Squared Error on new data: {results['mean_squared_error']:.2f}")
+    st.write(f"R2 Score on new data: {results['r2_score']:.2f}")
 
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
-)
+    st.success("Model evaluation on new data is complete!")
 
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
-
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
-
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
-
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x="Category", y="count")
-
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
-
+else:
+    st.info("Please upload a CSV file to test the model.")
