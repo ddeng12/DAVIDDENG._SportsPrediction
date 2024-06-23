@@ -9,7 +9,7 @@ import os
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
-scaler_file = 'scaler.pkl'  # Updated to the correct file name
+scaler_file = 'scaler (1).pkl'  
 
 # List files in the current directory for debugging
 st.write("Files in the current directory:")
