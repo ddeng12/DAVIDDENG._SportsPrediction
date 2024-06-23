@@ -4,11 +4,16 @@ import pickle
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.exceptions import NotFittedError
+import os
 
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
-scaler_file = 'scaler(1).pkl'
+scaler_file = 'scaler(1).pkl'  # Ensure this is the correct file name
+
+# List files in the current directory for debugging
+st.write("Files in the current directory:")
+st.write(os.listdir('.'))
 
 # Load the model
 try:
