@@ -9,7 +9,7 @@ import os
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
-scaler_file = 'scaler (1).pkl'  
+scaler_file = 'scaler.pkl'
 
 # List files in the current directory for debugging
 st.write("Files in the current directory:")
@@ -49,7 +49,7 @@ def preprocess_data(data, train_columns):
         if col not in data.columns:
             data[col] = 0
     data = data[train_columns]
-    data = data.fillna(0)
+    data = data.fillna(0)  # Fill missing values with zeros
     return data
 
 def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch_size=1000):
@@ -59,7 +59,7 @@ def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch
     for i in range(num_batches):
         start = i * batch_size
         end = (i + 1) * batch_size
-        X_batch = X_new[start:end]
+        X_batch = X_new.iloc[start:end]  # Use iloc to ensure indexing consistency
         y_batch = y_new[start:end]
 
         X_batch = preprocess_data(X_batch, train_columns)
@@ -87,12 +87,14 @@ if uploaded_file is not None:
     try:
         new_data = pd.read_csv(uploaded_file)
         
-        y_new = new_data['overall']
-        X_new = new_data.drop('overall', axis=1)
+        # Ensure columns match the training data
+        train_columns = ['value_eur', 'wage_eur', 'potential', 'age', 'defending', 'defending_standing_tackle',
+                         'mentality_interceptions', 'defending_sliding_tackle', 'international_reputation',
+                         'movement_reactions', 'defending_marking_awareness', 'attacking_finishing', 'rb_75',
+                         'league_id', 'skill_ball_control', 'skill_long_passing', 'attacking_volleys',
+                         'club_team_id', 'gk_76', 'attacking_crossing']
         
-        train_columns = X_new.columns.tolist()
-
-        results = test_model_in_batches(best_model, X_new, y_new, train_columns, scaler=scaler)
+        results = test_model_in_batches(best_model, new_data, new_data['overall'], train_columns, scaler=scaler)
         
         st.write(f"Mean Squared Error on new data: {results['mean_squared_error']:.2f}")
         st.write(f"R2 Score on new data: {results['r2_score']:.2f}")
