@@ -9,13 +9,11 @@ import os
 st.title("FIFA Model Deployment")
 
 model_file = 'best_model.pkl'
-scaler_file = 'scaler.pkl'
+scaler_file = 'scaler (1).pkl'
 
-# List files in the current directory for debugging
 st.write("Files in the current directory:")
 st.write(os.listdir('.'))
 
-# Load the model
 try:
     with open(model_file, 'rb') as f:
         best_model = pickle.load(f)
@@ -26,7 +24,6 @@ except Exception as e:
     st.error(f"Error loading model: {e}")
     st.stop()
 
-# Load the scaler
 try:
     with open(scaler_file, 'rb') as f:
         scaler = pickle.load(f)
@@ -37,7 +34,6 @@ except Exception as e:
     st.error(f"Error loading scaler: {e}")
     st.stop()
 
-# Check if scaler is fitted
 try:
     _ = scaler.mean_
 except AttributeError:
@@ -49,7 +45,7 @@ def preprocess_data(data, train_columns):
         if col not in data.columns:
             data[col] = 0
     data = data[train_columns]
-    data = data.fillna(0)  # Fill missing values with zeros
+    data = data.fillna(0)  
     return data
 
 def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch_size=1000):
@@ -59,7 +55,7 @@ def test_model_in_batches(model, X_new, y_new, train_columns, scaler=None, batch
     for i in range(num_batches):
         start = i * batch_size
         end = (i + 1) * batch_size
-        X_batch = X_new.iloc[start:end]  # Use iloc to ensure indexing consistency
+        X_batch = X_new.iloc[start:end]  
         y_batch = y_new[start:end]
 
         X_batch = preprocess_data(X_batch, train_columns)
@@ -87,7 +83,6 @@ if uploaded_file is not None:
     try:
         new_data = pd.read_csv(uploaded_file)
         
-        # Ensure columns match the training data
         train_columns = ['value_eur', 'wage_eur', 'potential', 'age', 'defending', 'defending_standing_tackle',
                          'mentality_interceptions', 'defending_sliding_tackle', 'international_reputation',
                          'movement_reactions', 'defending_marking_awareness', 'attacking_finishing',
